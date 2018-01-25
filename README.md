@@ -9,16 +9,14 @@
 
 > a skeleton for creation of mqtt interface daemons following [mqtt-smarthome](https://github.com/mqtt-smarthome) architecure
 
-### Getting started
+### Install
 
-* Install
-
-```sudo npm install -g xyz2mqtt```
+`$ sudo npm install -g xyz2mqtt`
 
 
-* Usage 
+### Usage 
 
-```xyz2mqtt --help```  
+`$ xyz2mqtt --help`  
 
 
 ## License
