@@ -1,41 +1,46 @@
 #!/usr/bin/env node
 
-var pkg =       require('./package.json');
-var log =       require('yalm');
-var config =    require('./config.js');
-var Mqtt =      require('mqtt');
+const log = require('yalm');
+const Mqtt = require('mqtt');
+const config = require('./config.js');
+const pkg = require('./package.json');
 
-var mqttConnected;
+let mqttConnected;
 
 log.setLevel(config.verbosity);
 
 log.info(pkg.name + ' ' + pkg.version + ' starting');
 log.info('mqtt trying to connect', config.url);
 
-var mqtt = Mqtt.connect(config.url, {will: {topic: config.name + '/connected', payload: '0', retain: true}});
+const mqtt = Mqtt.connect(config.url, {will: {topic: config.name + '/connected', payload: '0', retain: true}});
 
-mqtt.on('connect', function () {
+function mqttPub(topic, payload, options) {
+    log.debug('mqtt >', topic, payload);
+    mqtt.publish(topic, payload, options);
+}
+
+mqtt.on('connect', () => {
     mqttConnected = true;
 
     log.info('mqtt connected', config.url);
-    mqtt.publish(config.name + '/connected', '1', {retain: true}); // TODO eventually set to '2' if target system already connected
+    mqttPub(config.name + '/connected', '1', {retain: true}); // TODO eventually set to '2' if target system already connected
 
     log.info('mqtt subscribe', config.name + '/set/#');
     mqtt.subscribe(config.name + '/set/#');
 });
 
-mqtt.on('close', function () {
+mqtt.on('close', () => {
     if (mqttConnected) {
         mqttConnected = false;
         log.info('mqtt closed ' + config.url);
     }
 });
 
-mqtt.on('error', function (err) {
+mqtt.on('error', err => {
     log.error('mqtt', err);
 });
 
-mqtt.on('message', function (topic, payload) {
+mqtt.on('message', (topic, payload) => {
     payload = payload.toString();
     log.debug('mqtt <', topic, payload);
     // TODO do something with incoming messages
