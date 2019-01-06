@@ -8,6 +8,7 @@ module.exports = require('yargs')
     .describe('c', 'set path for client certificate')
     .describe('t', 'set path for trusted certification authority')
     .describe('h', 'show help')
+    .boolean('insecure')
     .alias({
         c: 'clientCert',
         h: 'help',

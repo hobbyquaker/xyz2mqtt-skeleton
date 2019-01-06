@@ -14,6 +14,7 @@ log.info(pkg.name + ' ' + pkg.version + ' starting');
 let mqttConnected;
 
 const pattern = new UrlPattern(
+    '(:protocol\\://:url)' +
     '(:protocol\\://:url\\::port)' +
     '(:protocol\\://:username\\::password\\@:url)' +
     '(:protocol\\://:username\\::password\\@:url\\::port)' +
@@ -24,43 +25,44 @@ const pattern = new UrlPattern(
 
 const brokerData = pattern.match(config.mqttUrl);
 
-let options = {};
+let mqttOptions = {};
 
-options['host'] = brokerData.url || brokerData.ip[0] + '.' + brokerData.ip[1] + '.' + brokerData.ip[2] + '.' + brokerData.ip[3];
-options['protocol'] = brokerData.protocol || 'mqtt';
+mqttOptions['host'] = brokerData.url || brokerData.ip[0] + '.' + brokerData.ip[1] + '.' + brokerData.ip[2] + '.' + brokerData.ip[3];
+mqttOptions['protocol'] = brokerData.protocol || 'mqtt';
 
 if (!(brokerData.port)) {
-    if (options['protocol'] === 'mqtt') {
-        options['port'] = 1880;
+    if (mqttOptions['protocol'] === 'mqtt') {
+        mqttOptions['port'] = 1883;
     }
-    else if (options['protocol'] === 'mqtts') {
-        options['port'] = 8883;
+    else if (mqttOptions['protocol'] === 'mqtts') {
+        mqttOptions['port'] = 8883;
     }
+} else {
+    mqttOptions['port'] = brokerData.port;
 }
 
 if (brokerData.username && brokerData.password) {
-    options['username'] = brokerData.username;
-    options['password'] = brokerData.password;
+    mqttOptions['username'] = brokerData.username;
+    mqttOptions['password'] = brokerData.password;
 }
 
-options['rejectUnauthorized'] = !config.insecure;
-
 if (config.trustedCa) {
-    options['ca'] = fs.readFileSync(config.trustedCa);
+    mqttOptions['ca'] = fs.readFileSync(config.trustedCa);
+    mqttOptions['rejectUnauthorized'] = !config.insecure;
 }
 
 if (config.clientKey && config.clientCert && config.trustedCa) {
-    options['key'] = fs.readFileSync(config.clientKey);
-    options['cert'] = fs.readFileSync(config.clientCert);
+    mqttOptions['key'] = fs.readFileSync(config.clientKey);
+    mqttOptions['cert'] = fs.readFileSync(config.clientCert);
 }
 
-options['clientId'] = config.name + '_' + Math.random().toString(16).substr(2, 8);
-options['will'] = {topic: config.name + '/connected', payload: '0', retain: true};
+mqttOptions['clientId'] = config.name + '_' + Math.random().toString(16).substr(2, 8);
+mqttOptions['will'] = {topic: config.name + '/connected', payload: '0', retain: true};
 
-log.info(options);
-log.info('mqtt trying to connect', options['host']);
+log.debug(mqttOptions);
+log.info('mqtt trying to connect', mqttOptions['host']);
 
-const mqtt = Mqtt.connect(options);
+const mqtt = Mqtt.connect(mqttOptions);
 
 function mqttPub(topic, payload, options) {
     log.debug('mqtt >', topic, payload);
@@ -70,7 +72,7 @@ function mqttPub(topic, payload, options) {
 mqtt.on('connect', () => {
     mqttConnected = true;
 
-    log.info('mqtt connected', options['host']);
+    log.info('mqtt connected', mqttOptions['host']);
     mqttPub(config.name + '/connected', '1', {retain: true}); // TODO eventually set to '2' if target system already connected
 
     log.info('mqtt subscribe', config.name + '/set/#');
@@ -80,7 +82,7 @@ mqtt.on('connect', () => {
 mqtt.on('close', () => {
     if (mqttConnected) {
         mqttConnected = false;
-        log.info('mqtt closed ' + options['host']);
+        log.info('mqtt closed ' + mqttOptions['host']);
     }
 });
 
